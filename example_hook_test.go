@@ -1,14 +1,25 @@
+//go:build !windows
 // +build !windows
 
 package logrus_test
 
 import (
-	"log/syslog"
 	"os"
 
 	"github.com/sirupsen/logrus"
-	slhooks "github.com/sirupsen/logrus/hooks/syslog"
 )
+
+type getCallerHook struct{}
+
+func (h *getCallerHook) Levels() []logrus.Level {
+	return logrus.AllLevels
+}
+
+func (h *getCallerHook) Fire(e *logrus.Entry) error {
+	// get caller here by walking frames
+	e.Data["caller"] = "acaller"
+	return nil
+}
 
 // An example on how to use a hook
 func Example_hook() {
@@ -16,9 +27,7 @@ func Example_hook() {
 	log.Formatter = new(logrus.TextFormatter)                     // default
 	log.Formatter.(*logrus.TextFormatter).DisableColors = true    // remove colors
 	log.Formatter.(*logrus.TextFormatter).DisableTimestamp = true // remove timestamp from test output
-	if sl, err := slhooks.NewSyslogHook("udp", "localhost:514", syslog.LOG_INFO, ""); err == nil {
-		log.Hooks.Add(sl)
-	}
+	log.Hooks.Add(&getCallerHook{})
 	log.Out = os.Stdout
 
 	log.WithFields(logrus.Fields{
